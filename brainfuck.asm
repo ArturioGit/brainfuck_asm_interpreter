@@ -1,22 +1,27 @@
 .model tiny
+
 .code
 org 100h
 
 init:
+    ; set the address of the es segment to work with it
     mov ax, cs 
     mov es, ax
+
+    ; set the value of the register si to correctly read the value of the argument (file name)
     mov si, 82h
     lea di, file_name 
     cld
 
-copy_to_buffer:
+copy_file_name:
+    ; read the argument byte by byte and write it into memory using movsb
     movsb
     mov al, byte [si]
     cmp al, ' '
     je open_file
     cmp al, 0
     je open_file
-    jmp copy_to_buffer
+    jmp copy_file_name
 
 open_file:
     ; just opening the file
@@ -35,18 +40,16 @@ read_file:
     int 21h
 
 exit:
-    xor ax, ax
-    mov ah, 02h          ; Function code for displaying a character
-    mov dl, [code]       ; Load the character from memory into DL
-    int 21h 
-
+    ; exit instructions
     mov ax, 4C00h
     int 21h
 
 .data
+; initialized data
 max_size dw 10000d
 
 .data?
+; uninitialized data
 file_name db 256d dup(?)
 code db 10000d dup(?)
 
