@@ -8,7 +8,7 @@ MAX_SIZE EQU 10000
 ; uninitialized data
 filename db 256d dup(?)
 code db MAX_SIZE dup(?)
-cells db MAX_SIZE dup(?)
+cells dw MAX_SIZE dup(?)
 
 .data
 nested_loops_value dw 0
@@ -20,6 +20,14 @@ init:
     ; set the address of the es segment to work with it
     mov ax, cs 
     mov es, ax
+
+    ; set all bytes we will use to zero
+    lea di, filename
+    xor ax, ax
+    mov cx, 30256
+    cld
+    rep stosb
+    mov ax, cs 
 
     ; set the value of the register si to correctly read the value of the argument (file name)
     mov si, 82h
@@ -91,26 +99,35 @@ interpret_command PROC
     ret
 
     increment_value:
-        inc byte ptr [di]
+        inc word ptr [di]
         ret
+
     decrement_value:
-        dec byte ptr [di]
+        dec word ptr [di]
         ret
+
     increment_pointer:
-        inc di
+        add di, 2
         ret
+
     decrement_pointer:
-        dec di
+        sub di, 2
         ret
+
     print_value:
-        mov ah, 2
-        mov dl, [di]
+        mov ah, 40h ; to write in file (handle)
+        mov bx, 1 ; stdout
+        mov cx, 1 ; number of bytes to write
+        mov dx, di ; copy pointer on current cell
         int 21h
         ret
+        
     get_value:
-        mov ah, 1
+        mov ah, 03fh ; to read from file
+        mov bx, 0 ; stdin
+        mov cx, 1 ; number of bytes to read
+        mov dx, di ; copy pointer on current cell
         int 21h
-        mov [di], al
         ret
 
 interpret_command ENDP 
