@@ -8,6 +8,10 @@ MAX_SIZE EQU 10000
 ; uninitialized data
 filename db 256d dup(?)
 code db MAX_SIZE dup(?)
+cells db MAX_SIZE dup(?)
+
+.data
+nested_loops_value dw 0
 
 .code
 org 100h
@@ -54,9 +58,62 @@ close_file:
     mov ah, 3Eh
     int 21h
 
-exit:
-    ; exit instructions
-    mov ax, 4C00h
-    int 21h
+loop_preparation:
+    lea si, code 
+    lea di, cells
+
+interpret_loop PROC
+    lodsb ; increment si each iteration and put value of ds:si into al. si is code pointer
+    call interpret_command 
+    cmp al, 0 ; condition to exit
+    jne interpret_loop
+
+    exit:
+        ; exit instructions
+        mov ax, 4C00h
+        int 21h
+
+interpret_loop ENDP
+
+interpret_command PROC
+    cmp al, '+'
+    je increment_value
+    cmp al, '-'
+    je decrement_value
+    cmp al, '>'
+    je increment_pointer
+    cmp al, '<'
+    je decrement_pointer
+    cmp al, '.'
+    je print_value
+    cmp al, ','
+    je get_value
+    ret
+
+    increment_value:
+        inc byte ptr [di]
+        ret
+    decrement_value:
+        dec byte ptr [di]
+        ret
+    increment_pointer:
+        inc di
+        ret
+    decrement_pointer:
+        dec di
+        ret
+    print_value:
+        mov ah, 2
+        mov dl, [di]
+        int 21h
+        ret
+    get_value:
+        mov ah, 1
+        int 21h
+        mov [di], al
+        ret
+
+interpret_command ENDP 
+
 
 end init
