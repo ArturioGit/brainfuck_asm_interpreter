@@ -98,6 +98,8 @@ interpret_command PROC
     je get_value
     cmp al, '['
     je start_loop
+    cmp al, ']'
+    je end_loop
     ret
 
     increment_value:
@@ -137,33 +139,77 @@ interpret_command PROC
         jne exit_interpret_command_proc
 
         ; in case cell = 0, we have to skip all loop commands
-        mov [nested_loops_value], 1; loop nested value to find the corresponding end of the loop
+        inc [nested_loops_value] ; loop nested value to find the corresponding end of the loop
 
         ; In the cycle, we look for the corresponding ']', when we find it, we finish
         ; the interpretation of the command '[', we have changed the pointer si. 
         ; And we will continue itrepretation from a new place
 
-        find_inner_brackets:
+        find_end_bracket:
             cmp nested_loops_value, 0
             je exit_interpret_command_proc 
             lodsb
             cmp al, '['
-            je inc_nested_value
+            je inc_nested_value_start_loop
             cmp al, ']' 
-            je dec_nested_value
+            je dec_nested_value_start_loop
 
-            jmp find_inner_brackets
+            jmp find_end_bracket
 
             ; I am writing a comment, because it is definitely possible to optimize here
 
-            inc_nested_value:
+            inc_nested_value_start_loop:
                 inc nested_loops_value
-                jmp find_inner_brackets
+                jmp find_end_bracket
             
-            dec_nested_value:
+            dec_nested_value_start_loop:
                 dec nested_loops_value
-                jmp find_inner_brackets
+                jmp find_end_bracket
+
+    end_loop:
+        cmp byte ptr [di], 0 ; if the cell = 0 at the beginning of the loop, it will not start
+        je exit_interpret_command_proc
+
+        inc [nested_loops_value] ; the same
+
+        ; _ ] _ _
+        ;     | - pointer si was here
+        sub si, 2  
+        ; _ ] _ _
+        ; | - pointer si was here
+
+        std   
+
+        ; In the cycle, we look for the corresponding '[', when we find it, we finish
+        ; the interpretation of the command ']', we have changed the pointer si. 
+        ; And we will continue itrepretation from a new place    
+
+        find_start_bracket:
+            cmp nested_loops_value, 0
+            je set_cld
+            lodsb
+            cmp al, ']'
+            je inc_nested_value_end_loop
+            cmp al, '[' 
+            je dec_nested_value_end_loop
+            jmp find_start_bracket
+        
+            inc_nested_value_end_loop:
+                inc nested_loops_value
+                jmp find_start_bracket
             
+            dec_nested_value_end_loop:
+                dec nested_loops_value
+                jmp find_start_bracket
+
+    set_cld:
+        ; _ _ [ _ 
+        ;     | - pointer was here
+        inc si
+        ; _ _ [ _ 
+        ;       | - pointer is here now
+        cld
+ 
     exit_interpret_command_proc:
         ret    
 
