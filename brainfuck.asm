@@ -96,6 +96,8 @@ interpret_command PROC
     je print_value
     cmp al, ','
     je get_value
+    cmp al, '['
+    je start_loop
     ret
 
     increment_value:
@@ -121,7 +123,7 @@ interpret_command PROC
         mov dx, di ; copy pointer on current cell
         int 21h
         ret
-        
+
     get_value:
         mov ah, 03fh ; to read from file
         mov bx, 0 ; stdin
@@ -130,7 +132,71 @@ interpret_command PROC
         int 21h
         ret
 
+    start_loop:
+        cmp byte ptr [di], 0 ; if the cell = 0 at the beginning of the loop, it will not start
+        jne exit_interpret_command_proc
+
+        ; in case cell = 0, we have to skip all loop commands
+        mov [nested_loops_value], 1; loop nested value to find the corresponding end of the loop
+
+        ; In the cycle, we look for the corresponding ']', when we find it, we finish
+        ; the interpretation of the command '[', we have changed the pointer si. 
+        ; And we will continue itrepretation from a new place
+
+        find_inner_brackets:
+            cmp nested_loops_value, 0
+            je exit_interpret_command_proc 
+            lodsb
+            cmp al, '['
+            je inc_nested_value
+            cmp al, ']' 
+            je dec_nested_value
+
+            jmp find_inner_brackets
+
+            ; I am writing a comment, because it is definitely possible to optimize here
+
+            inc_nested_value:
+                inc nested_loops_value
+                jmp find_inner_brackets
+            
+            dec_nested_value:
+                dec nested_loops_value
+                jmp find_inner_brackets
+            
+    exit_interpret_command_proc:
+        ret    
+
 interpret_command ENDP 
 
 
 end init
+
+; --------------------------------------------------------
+; My loops work based on this algorithm in Java          
+;
+;               case '[':
+;                   if (tape[pointer] == 0) {
+;                        loop = 1;
+;                        while (loop > 0) {
+;                            i++;
+;                            char c = code.charAt(i);
+;                            if (c == '[') loop++;
+;                            else if (c == ']') loop--;
+;                        }
+;                    }
+;                    break;
+;
+;                case ']':
+;                    if (tape[pointer] != 0) {
+;                        loop = 1;
+;                        while (loop > 0) {
+;                            i--;
+;                            char c = code.charAt(i);
+;                            if (c == '[') loop--;
+;                            else if (c == ']') loop++;
+;                        }
+;                    }
+;                    break;
+;
+; --------------------------------------------------------
