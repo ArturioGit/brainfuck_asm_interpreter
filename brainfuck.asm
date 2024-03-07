@@ -32,7 +32,6 @@ init:
     ; set the value of the register si to correctly read the value of the argument (file name)
     mov si, 82h
     lea di, filename 
-    cld
 
 copy_filename:
     ; read the argument byte by byte and write it into memory using movsb
@@ -69,12 +68,14 @@ close_file:
 loop_preparation:
     lea si, code 
     lea di, cells
+    mov cx, 1
 
 interpret_loop PROC
     lodsb ; increment si each iteration and put value of ds:si into al. si is code pointer
+    cmp al, 0
+    je exit
     call interpret_command 
-    cmp al, 0 ; condition to exit
-    jne interpret_loop
+    jmp interpret_loop
 
     exit:
         ; exit instructions
@@ -121,18 +122,22 @@ interpret_command PROC
     print_value:
         mov ah, 40h ; to write in file (handle)
         mov bx, 1 ; stdout
-        mov cx, 1 ; number of bytes to write
         mov dx, di ; copy pointer on current cell
         int 21h
         ret
 
     get_value:
-        mov ah, 03fh ; to read from file
-        mov bx, 0 ; stdin
-        mov cx, 1 ; number of bytes to read
-        mov dx, di ; copy pointer on current cell
-        int 21h
-        ret
+        mov ah, 03fh           ; DOS function to read from file or stdin
+        mov bx, 0              ; Handle for stdin
+        lea dx, [di]           ; Pointer to the current cell
+        int 21h                ; Call DOS interrupt
+        
+        cmp byte ptr [di], 0Dh  ; Check for carriage return (CR)
+        jne end_get_value
+        mov byte ptr [di], 0FFFFh
+
+        end_get_value:
+            ret
 
     start_loop:
         cmp byte ptr [di], 0 ; if the cell = 0 at the beginning of the loop, it will not start
