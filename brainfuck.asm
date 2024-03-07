@@ -78,9 +78,7 @@ interpret_loop PROC
     jmp interpret_loop
 
     exit:
-        ; exit instructions
-        mov ax, 4C00h
-        int 21h
+        ret
 
 interpret_loop ENDP
 
@@ -157,19 +155,17 @@ interpret_command PROC
             cmp al, '['
             je inc_nested_value_start_loop
             cmp al, ']' 
-            je dec_nested_value_start_loop
-
+            jne find_end_bracket
+            
+            dec nested_loops_value
             jmp find_end_bracket
-
-            ; I am writing a comment, because it is definitely possible to optimize here
 
             inc_nested_value_start_loop:
                 inc nested_loops_value
                 jmp find_end_bracket
             
-            dec_nested_value_start_loop:
-                dec nested_loops_value
-                jmp find_end_bracket
+
+            
 
     end_loop:
         cmp byte ptr [di], 0 ; if the cell = 0 at the beginning of the loop, it will not start
@@ -196,16 +192,15 @@ interpret_command PROC
             cmp al, ']'
             je inc_nested_value_end_loop
             cmp al, '[' 
-            je dec_nested_value_end_loop
+            jne find_start_bracket
+
+            dec nested_loops_value
             jmp find_start_bracket
         
             inc_nested_value_end_loop:
                 inc nested_loops_value
                 jmp find_start_bracket
             
-            dec_nested_value_end_loop:
-                dec nested_loops_value
-                jmp find_start_bracket
 
     set_cld:
         ; _ _ [ _ 
@@ -219,6 +214,7 @@ interpret_command PROC
         ret    
 
 interpret_command ENDP 
+
 
 
 end init
