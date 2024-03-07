@@ -125,7 +125,7 @@ interpret_command PROC
     get_value:
         mov ah, 03fh           ; DOS function to read from file or stdin
         mov bx, 0              ; Handle for stdin
-        lea dx, [di]           ; Pointer to the current cell
+        mov dx, di           ; Pointer to the current cell
         int 21h                ; Call DOS interrupt
         
         cmp byte ptr [di], 0Dh  ; Check for carriage return (CR)
@@ -140,7 +140,7 @@ interpret_command PROC
         jne exit_interpret_command_proc
 
         ; in case cell = 0, we have to skip all loop commands
-        inc [nested_loops_value] ; loop nested value to find the corresponding end of the loop
+        jmp inc_nested_value_start_loop ; loop nested value to find the corresponding end of the loop
 
         ; In the cycle, we look for the corresponding ']', when we find it, we finish
         ; the interpretation of the command '[', we have changed the pointer si. 
@@ -164,10 +164,8 @@ interpret_command PROC
             
 
     end_loop:
-        cmp byte ptr [di], 0 ; if the cell = 0 at the beginning of the loop, it will not start
+        cmp byte ptr [di], 0 ; if the cell = 0 at the end of the loop, it will not start again
         je exit_interpret_command_proc
-
-        inc [nested_loops_value] ; the same
 
         ; _ ] _ _
         ;     | - pointer si was here
@@ -180,6 +178,8 @@ interpret_command PROC
         ; In the cycle, we look for the corresponding '[', when we find it, we finish
         ; the interpretation of the command ']', we have changed the pointer si. 
         ; And we will continue itrepretation from a new place    
+
+        jmp inc_nested_value_end_loop ; the same
 
         find_start_bracket:
             cmp nested_loops_value, 0
