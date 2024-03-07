@@ -3,6 +3,7 @@
 
 ; constatnts 
 MAX_SIZE EQU 10000
+TAIL_LENGTH EQU 80h
 
 .data?
 ; uninitialized data
@@ -29,20 +30,17 @@ init:
     rep stosb
     mov ax, cs 
 
+copy_filename:
     ; set the value of the register si to correctly read the value of the argument (file name)
     mov si, 82h
+    mov cl, [ds:TAIL_LENGTH]
+    mov ch, 0
+    dec cl
     lea di, filename 
-
-copy_filename:
+    
     ; read the argument byte by byte and write it into memory using movsb
-    movsb
-    mov dl, byte [si]
-    cmp dl, ' '
-    je open_file
-    cmp dl, 0
-    je open_file
-    jmp copy_filename
-
+    rep movsb
+    
 open_file:
     ; just opening the file
     mov ds, ax
@@ -165,8 +163,6 @@ interpret_command PROC
                 jmp find_end_bracket
             
 
-            
-
     end_loop:
         cmp byte ptr [di], 0 ; if the cell = 0 at the beginning of the loop, it will not start
         je exit_interpret_command_proc
@@ -214,7 +210,6 @@ interpret_command PROC
         ret    
 
 interpret_command ENDP 
-
 
 
 end init
