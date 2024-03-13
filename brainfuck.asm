@@ -8,8 +8,8 @@ TAIL_LENGTH EQU 80h
 .data?
 ; uninitialized data
 filename db 256d dup(?)
-code db MAX_SIZE dup(?)
 cells dw MAX_SIZE dup(?)
+code db MAX_SIZE dup(?)
 
 ; .data
 ; nested_loops_value dw 0
@@ -33,7 +33,6 @@ copy_filename:
     ; set the value of the register si to correctly read the value of the argument (file name)
     mov si, 82h
     mov cl, [ds:TAIL_LENGTH]
-    mov ch, 0
     dec cl
     lea di, filename 
     ; read the argument byte by byte and write it into memory using movsb
@@ -61,15 +60,7 @@ close_file:
 
 loop_preparation:
     lea si, code 
-    lea di, cells
     mov cx, 1
-
-interpret_loop:
-    lodsb ; increment si each iteration and put value of ds:si into al. si is code pointer
-    cmp al, 0
-    jne interpret_command 
-    exit:
-        ret
 
 interpret_command:
     xor bx, bx
@@ -141,11 +132,10 @@ interpret_command:
             continue_print_value:
                 mov dl, byte ptr [di]
                 int 21h
-                jmp interpret_loop
-
+             
     check_input_command:
         cmp al, ','
-        jne end_get_value
+        jne interpret_loop
 
     get_value:
         mov ah, 03fh ; DOS function to read from file or stdin
@@ -160,7 +150,11 @@ interpret_command:
             cmp byte ptr [di], 0dh
             je get_value
 
-        end_get_value:
-            jmp interpret_loop
+interpret_loop:
+    lodsb ; increment si each iteration and put value of ds:si into al. si is code pointer
+    cmp al, 0
+    jne interpret_command 
+    exit:
+        ret
     
 end init
