@@ -44,7 +44,6 @@ copy_filename:
 open_file:
     ; just opening the file
     mov ds, ax
-    xor ax, ax
     lea dx, filename
     mov ah, 03dh
     int 21h
@@ -116,11 +115,15 @@ interpret_command PROC
         ret
 
     print_value:
-        mov ah, 40h ; to write in file (handle)
-        mov bx, 1 ; stdout
-        mov dx, di ; copy pointer on current cell
-        int 21h
-        ret
+        mov ah, 02h 
+        cmp byte ptr [di], 0Ah
+        jne continue_print_value
+            mov dl, 0Dh
+            int 21h
+        continue_print_value:
+            mov dl, byte ptr [di]
+            int 21h
+            ret
 
     get_value:
         mov ah, 03fh           ; DOS function to read from file or stdin
@@ -128,9 +131,13 @@ interpret_command PROC
         mov dx, di           ; Pointer to the current cell
         int 21h                ; Call DOS interrupt
         
-        cmp byte ptr [di], 0Dh  ; Check for carriage return (CR)
-        jne end_get_value
-        mov byte ptr [di], 0FFFFh
+        or ax, ax  
+        jnz check_for_ODh
+        mov word ptr [di], 0FFFFh
+
+        check_for_ODh:
+            cmp byte ptr [di], 0dh
+            je get_value
 
         end_get_value:
             ret
