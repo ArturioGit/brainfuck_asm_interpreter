@@ -19,8 +19,8 @@ org 100h
 
 init:
     ; set the address of the es segment to work with it
-    mov ax, cs 
-    mov es, ax
+    mov bx, cs 
+    mov es, bx
 
     ; set all bytes we will use to zero
     lea di, filename
@@ -28,7 +28,6 @@ init:
     mov cx, 30256
     cld
     rep stosb
-    mov ax, cs 
 
 copy_filename:
     ; set the value of the register si to correctly read the value of the argument (file name)
@@ -43,7 +42,7 @@ copy_filename:
     
 open_file:
     ; just opening the file
-    mov ds, ax
+    mov ds, bx
     lea dx, filename
     mov ah, 03dh
     int 21h
@@ -67,19 +66,17 @@ loop_preparation:
     lea di, cells
     mov cx, 1
 
-interpret_loop PROC
+interpret_loop:
     lodsb ; increment si each iteration and put value of ds:si into al. si is code pointer
     cmp al, 0
-    je exit
-    call interpret_command 
-    jmp interpret_loop
+    jne interpret_command 
 
     exit:
         ret
 
-interpret_loop ENDP
 
-interpret_command PROC
+
+interpret_command:
     cmp al, '+'
     je increment_value
     cmp al, '-'
@@ -96,23 +93,23 @@ interpret_command PROC
     je start_loop
     cmp al, ']'
     je end_loop
-    ret
+    jmp interpret_loop
 
     increment_value:
         inc word ptr [di]
-        ret
+        jmp interpret_loop
 
     decrement_value:
         dec word ptr [di]
-        ret
+        jmp interpret_loop
 
     increment_pointer:
         add di, 2
-        ret
+        jmp interpret_loop
 
     decrement_pointer:
         sub di, 2
-        ret
+        jmp interpret_loop
 
     print_value:
         mov ah, 02h 
@@ -123,11 +120,11 @@ interpret_command PROC
         continue_print_value:
             mov dl, byte ptr [di]
             int 21h
-            ret
+            jmp interpret_loop
 
     get_value:
         mov ah, 03fh           ; DOS function to read from file or stdin
-        mov bx, 0              ; Handle for stdin
+        xor bx, bx              ; Handle for stdin
         mov dx, di           ; Pointer to the current cell
         int 21h                ; Call DOS interrupt
         
@@ -140,22 +137,23 @@ interpret_command PROC
             je get_value
 
         end_get_value:
-            ret
+            jmp interpret_loop
 
     start_loop:
+        push si
         cmp byte ptr [di], 0 ; if the cell = 0 at the beginning of the loop, it will not start
-        jne exit_interpret_command_proc
+        je inc_nested_value_start_loop
+        
+        jmp interpret_loop
 
         ; in case cell = 0, we have to skip all loop commands
-        jmp inc_nested_value_start_loop ; loop nested value to find the corresponding end of the loop
-
         ; In the cycle, we look for the corresponding ']', when we find it, we finish
         ; the interpretation of the command '[', we have changed the pointer si. 
         ; And we will continue itrepretation from a new place
 
         find_end_bracket:
             cmp nested_loops_value, 0
-            je exit_interpret_command_proc 
+            je end_loop
             lodsb
             cmp al, '['
             je inc_nested_value_start_loop
@@ -172,80 +170,13 @@ interpret_command PROC
 
     end_loop:
         cmp byte ptr [di], 0 ; if the cell = 0 at the end of the loop, it will not start again
-        je exit_interpret_command_proc
-
-        ; _ ] _ _
-        ;     | - pointer si was here
-        sub si, 2  
-        ; _ ] _ _
-        ; | - pointer si was here
-
-        std   
-
-        ; In the cycle, we look for the corresponding '[', when we find it, we finish
-        ; the interpretation of the command ']', we have changed the pointer si. 
-        ; And we will continue itrepretation from a new place    
-
-        jmp inc_nested_value_end_loop ; the same
-
-        find_start_bracket:
-            cmp nested_loops_value, 0
-            je set_cld
-            lodsb
-            cmp al, ']'
-            je inc_nested_value_end_loop
-            cmp al, '[' 
-            jne find_start_bracket
-
-            dec nested_loops_value
-            jmp find_start_bracket
-        
-            inc_nested_value_end_loop:
-                inc nested_loops_value
-                jmp find_start_bracket
-            
-
-    set_cld:
-        ; _ _ [ _ 
-        ;     | - pointer was here
-        inc si
-        ; _ _ [ _ 
-        ;       | - pointer is here now
-        cld
+        je end_loop_di_0
+        pop si
+        push si
+        jmp interpret_loop
+        end_loop_di_0:
+            add sp, 2
+        jmp interpret_loop   
  
-    exit_interpret_command_proc:
-        ret    
-
-interpret_command ENDP 
-
 
 end init
-
-; --------------------------------------------------------
-; My loops work based on this algorithm in Java          
-;
-;               case '[':
-;                   if (tape[pointer] == 0) {
-;                        loop = 1;
-;                        while (loop > 0) {
-;                            i++;
-;                            char c = code.charAt(i);
-;                            if (c == '[') loop++;
-;                            else if (c == ']') loop--;
-;                        }
-;                    }
-;                    break;
-;
-;                case ']':
-;                    if (tape[pointer] != 0) {
-;                        loop = 1;
-;                        while (loop > 0) {
-;                            i--;
-;                            char c = code.charAt(i);
-;                            if (c == '[') loop--;
-;                            else if (c == ']') loop++;
-;                        }
-;                    }
-;                    break;
-;
-; --------------------------------------------------------
