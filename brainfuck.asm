@@ -11,8 +11,9 @@ filename db 256d dup(?)
 code db MAX_SIZE dup(?)
 cells dw MAX_SIZE dup(?)
 
-.data
-nested_loops_value dw 0
+; .data
+; nested_loops_value dw 0
+; instead of nested_loops_value now bx is used
 
 .code
 org 100h
@@ -71,6 +72,7 @@ interpret_loop:
         ret
 
 interpret_command:
+    xor bx, bx
     increment_value:
         cmp al, '+'
         jne decrement_value
@@ -96,17 +98,17 @@ interpret_command:
         jne end_loop
             push si
             cmp byte ptr [di], 0 ; if the cell = 0 at the beginning of the loop, it will not start
-            je inc_nested_value_start_loop
-            
-            jmp interpret_loop
+            jne interpret_loop
 
             ; in case cell = 0, we have to skip all loop commands
             ; In the cycle, we look for the corresponding ']', when we find it, we finish
             ; the interpretation of the command '[', we have changed the pointer si. 
             ; And we will continue itrepretation from a new place
+            inc_nested_value_start_loop:
+                inc bx
 
             find_end_bracket:
-                cmp nested_loops_value, 0
+                cmp bx, 0
                 je end_loop
                 lodsb
                 cmp al, '['
@@ -114,12 +116,8 @@ interpret_command:
                 cmp al, ']' 
                 jne find_end_bracket
                 
-                dec nested_loops_value
+                dec bx
                 jmp find_end_bracket
-
-                inc_nested_value_start_loop:
-                    inc nested_loops_value
-                    jmp find_end_bracket
 
     end_loop:
         cmp al, ']'
@@ -151,7 +149,6 @@ interpret_command:
 
     get_value:
         mov ah, 03fh ; DOS function to read from file or stdin
-        xor bx, bx ; Handle for stdin
         mov dx, di ; Pointer to the current cell
         int 21h ; Call DOS interrupt
             
