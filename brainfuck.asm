@@ -34,14 +34,14 @@ copy_filename:
     mov si, 82h
     mov cl, [ds:TAIL_LENGTH]
     dec cl
-    lea di, filename 
+    lea di, filename
+    mov dx, di
     ; read the argument byte by byte and write it into memory using movsb
     rep movsb
     
 open_file:
     ; just opening the file
     mov ds, bx
-    lea dx, filename
     mov ah, 03dh
     int 21h
     
@@ -88,8 +88,8 @@ interpret_command:
         cmp al, '['
         jne end_loop
             push si
-            cmp byte ptr [di], 0 ; if the cell = 0 at the beginning of the loop, it will not start
-            jne interpret_loop
+            cmp byte ptr [di], cl ; if the cell = 0 at the beginning of the loop, it will not start
+            jae interpret_loop
 
             ; in case cell = 0, we have to skip all loop commands
             ; In the cycle, we look for the corresponding ']', when we find it, we finish
@@ -99,8 +99,8 @@ interpret_command:
                 inc bx
 
             find_end_bracket:
-                cmp bx, 0
-                je end_loop
+                cmp bx, cx
+                jb end_loop
                 lodsb
                 cmp al, '['
                 je inc_nested_value_start_loop
@@ -113,13 +113,13 @@ interpret_command:
     end_loop:
         cmp al, ']'
         jne print_value
-            cmp byte ptr [di], 0 ; if the cell = 0 at the end of the loop, it will not start again
-            je end_loop_di_0
+            cmp byte ptr [di], cl ; if the cell = 0 at the end of the loop, it will not start again
+            jb end_loop_di_0
             pop si
             push si
             jmp print_value
             end_loop_di_0:
-                add sp, 2
+                pop bx
 
     print_value:
         cmp al, '.'
@@ -152,7 +152,7 @@ interpret_command:
 
 interpret_loop:
     lodsb ; increment si each iteration and put value of ds:si into al. si is code pointer
-    cmp al, 0
+    or al, al
     jne interpret_command 
     exit:
         ret
