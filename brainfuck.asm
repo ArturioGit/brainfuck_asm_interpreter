@@ -24,6 +24,7 @@ init:
     mov es, bx
     ; set all bytes we will use to zero
     lea di, filename
+    mov dx, di
     xor ax, ax
     mov cx, 30256
     cld
@@ -34,8 +35,7 @@ copy_filename:
     mov si, 82h
     mov cl, [ds:TAIL_LENGTH]
     dec cl
-    lea di, filename
-    mov dx, di
+    mov di, dx
     ; read the argument byte by byte and write it into memory using movsb
     rep movsb
     
@@ -51,6 +51,7 @@ read_file:
     mov ah, 03fh
     mov cx, MAX_SIZE
     mov dx, offset code
+    mov si, dx
     int 21h
 
 close_file:
@@ -59,7 +60,6 @@ close_file:
     int 21h
 
 loop_preparation:
-    lea si, code 
     mov cx, 1
 
 interpret_command:
