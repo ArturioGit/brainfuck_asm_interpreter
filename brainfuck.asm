@@ -77,12 +77,14 @@ interpret_command:
     increment_pointer:
         cmp al, '>'
         jne decrement_pointer
-            add di, 2  
+            inc di 
+            inc di
 
     decrement_pointer:
         cmp al, '<'
         jne start_loop
-            sub di, 2
+            dec di
+            dec di
 
     start_loop:
         cmp al, '['
@@ -99,8 +101,8 @@ interpret_command:
                 inc bx
 
             find_end_bracket:
-                cmp bx, cx
-                jb end_loop
+                or bx, bx
+                je end_loop
                 lodsb
                 cmp al, '['
                 je inc_nested_value_start_loop
