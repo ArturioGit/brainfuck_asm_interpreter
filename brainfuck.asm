@@ -90,7 +90,7 @@ interpret_command:
         cmp al, '['
         jne end_loop
             push si
-            cmp byte ptr [di], cl ; if the cell = 0 at the beginning of the loop, it will not start
+            cmp word ptr [di], cx ; if the cell = 0 at the beginning of the loop, it will not start
             jae interpret_loop
 
             ; in case cell = 0, we have to skip all loop commands
@@ -115,7 +115,7 @@ interpret_command:
     end_loop:
         cmp al, ']'
         jne print_value
-            cmp byte ptr [di], cl ; if the cell = 0 at the end of the loop, it will not start again
+            cmp word ptr [di], cx ; if the cell = 0 at the end of the loop, it will not start again
             jb end_loop_di_0
             pop si
             push si
@@ -140,13 +140,14 @@ interpret_command:
         jne interpret_loop
 
     get_value:
+        mov word ptr [di], bx
         mov ah, 03fh ; DOS function to read from file or stdin
         mov dx, di ; Pointer to the current cell
         int 21h ; Call DOS interrupt
             
         or ax, ax  
         jnz check_for_ODh
-        mov word ptr [di], 0FFFFh
+        dec word ptr [di]
 
         check_for_ODh:
             cmp byte ptr [di], 0dh
