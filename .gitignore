@@ -1,0 +1,10 @@
+CMP.*
+TEST*.*
+*.BAT
+*.EXE
+*.OBJ
+TEST.*
+*.B
+*.b
+ENTRY.*
+*.MAP
